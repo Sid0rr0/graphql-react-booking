@@ -1,0 +1,1 @@
+Learing Project - GraphQL, Express, MongoDB and React app for creating and booking events
