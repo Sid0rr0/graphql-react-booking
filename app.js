@@ -16,11 +16,11 @@ const {
 const path = require("path");
 require("dotenv").config({ path: __dirname + "/.env" });
 
+const Event = require("./models/events");
+
 const app = express();
 
 app.use(express.json());
-
-const events = [];
 
 const EventType = new GraphQLObjectType({
 	name: "Event",
@@ -49,21 +49,39 @@ const RootQueryType = new GraphQLObjectType({
 	name: "Query",
 	description: "Root query",
 	fields: () => ({
-		event: {
+		/*event: {
 			type: EventType,
 			description: "A single event",
 			args: {
-				_id: { type: GraphQLID },
+				title: { type: GraphQLString },
 			},
 			resolve: (parent, args) => {
-				return events.find(event => event._id === args._id);
+				return Event.find({ title: args.title })
+					.then(event => {
+						return event => {
+							return { ...event._doc };
+						};
+					})
+					.catch(err => {
+						console.log(err);
+						throw err;
+					});
 			},
-		},
+		},*/
 		events: {
 			type: GraphQLList(EventType),
 			description: "List of all events",
 			resolve: () => {
-				return events;
+				return Event.find()
+					.then(events => {
+						return events.map(event => {
+							return { ...event._doc };
+						});
+					})
+					.catch(err => {
+						console.log(err);
+						throw err;
+					});
 			},
 		},
 	}),
@@ -80,15 +98,21 @@ const RootMutationType = new GraphQLObjectType({
 				eventInput: { type: EventInputType },
 			},
 			resolve: (parent, args) => {
-				const event = {
-					_id: events.length + 1,
+				const event = new Event({
 					title: args.eventInput.title,
 					description: args.eventInput.description,
 					price: +args.eventInput.price,
-					date: args.eventInput.date,
-				};
-				events.push(event);
-				return event;
+					date: new Date(args.eventInput.date),
+				});
+				return event
+					.save()
+					.then(result => {
+						return { ...result._doc };
+					})
+					.catch(err => {
+						console.log(err);
+						throw err;
+					});
 			},
 		},
 	}),
@@ -109,7 +133,7 @@ app.use(
 
 mongoose
 	.connect(
-		`mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0-7gj1q.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`,
+		`mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0-7gj1q.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`,
 		{ useNewUrlParser: true, useUnifiedTopology: true }
 	)
 	.then(() => {
