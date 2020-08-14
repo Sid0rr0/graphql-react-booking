@@ -1,5 +1,6 @@
 const express = require("express");
 const { graphqlHTTP } = require("express-graphql");
+const mongoose = require("mongoose");
 const {
 	GraphQLSchema,
 	GraphQLObjectType,
@@ -11,6 +12,9 @@ const {
 	GraphQLID,
 	GraphQLInputObjectType,
 } = require("graphql");
+
+const path = require("path");
+require("dotenv").config({ path: __dirname + "/.env" });
 
 const app = express();
 
@@ -103,4 +107,14 @@ app.use(
 	})
 );
 
-app.listen(3000, () => console.log("Server running"));
+mongoose
+	.connect(
+		`mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0-7gj1q.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`,
+		{ useNewUrlParser: true, useUnifiedTopology: true }
+	)
+	.then(() => {
+		app.listen(3000, () => console.log("Server running"));
+	})
+	.catch(err => {
+		console.log(err);
+	});
