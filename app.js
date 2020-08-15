@@ -1,6 +1,7 @@
 const express = require("express");
 const { graphqlHTTP } = require("express-graphql");
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 const {
 	GraphQLSchema,
 	GraphQLObjectType,
@@ -16,7 +17,8 @@ const {
 const path = require("path");
 require("dotenv").config({ path: __dirname + "/.env" });
 
-const Event = require("./models/events");
+const Event = require("./models/event");
+const User = require("./models/user");
 
 const app = express();
 
@@ -42,6 +44,25 @@ const EventInputType = new GraphQLInputObjectType({
 		description: { type: GraphQLNonNull(GraphQLString) },
 		price: { type: GraphQLNonNull(GraphQLFloat) },
 		date: { type: GraphQLNonNull(GraphQLString) },
+	}),
+});
+
+const UserType = new GraphQLObjectType({
+	name: "User",
+	description: "This represents a user",
+	fields: () => ({
+		_id: { type: GraphQLNonNull(GraphQLID) },
+		email: { type: GraphQLNonNull(GraphQLString) },
+		password: { type: GraphQLString },
+	}),
+});
+
+const UserInputType = new GraphQLInputObjectType({
+	name: "UserInput",
+	description: "This represents a user input",
+	fields: () => ({
+		email: { type: GraphQLNonNull(GraphQLString) },
+		password: { type: GraphQLNonNull(GraphQLString) },
 	}),
 });
 
@@ -108,6 +129,42 @@ const RootMutationType = new GraphQLObjectType({
 					.save()
 					.then(result => {
 						return { ...result._doc };
+					})
+					.catch(err => {
+						console.log(err);
+						throw err;
+					});
+			},
+		},
+		createUser: {
+			type: UserType,
+			description: "Create a user",
+			args: {
+				userInput: { type: UserInputType },
+			},
+			resolve: (parent, args) => {
+				return User.findOne({ email: args.userInput.email })
+					.then(user => {
+						if(user) 
+							throw new Error("Email already used.")
+					
+						return bcrypt.hash(args.userInput.password, 12)
+					})
+					.then(hashedPass => {
+						const user = new User({
+							email: args.userInput.email,
+							password: hashedPass,
+						});
+
+						return user
+							.save()
+							.then(result => {
+								return { ...result._doc, password: null };
+							})
+							.catch(err => {
+								console.log(err);
+								throw err;
+							});
 					})
 					.catch(err => {
 						console.log(err);
