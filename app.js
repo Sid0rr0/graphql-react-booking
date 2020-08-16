@@ -22,6 +22,34 @@ const User = require("./models/user");
 
 const app = express();
 
+const events = eventIds => {
+	return Event.find({ _id: { $in: eventIds } })
+		.then(events => {
+			return events.map(event => {
+				return {
+					...event._doc,
+					creator: user.bind(this, event.creator),
+				};
+			});
+		})
+		.catch(err => {
+			throw err;
+		});
+};
+
+const user = userId => {
+	return User.findById(userId)
+		.then(user => {
+			return {
+				...user._doc,
+				createdEvents: events.bind(this, user._doc.createdEvents),
+			};
+		})
+		.catch(err => {
+			throw err;
+		});
+};
+
 app.use(express.json());
 
 const EventType = new GraphQLObjectType({
@@ -33,6 +61,7 @@ const EventType = new GraphQLObjectType({
 		description: { type: GraphQLNonNull(GraphQLString) },
 		price: { type: GraphQLNonNull(GraphQLFloat) },
 		date: { type: GraphQLNonNull(GraphQLString) },
+		creator: { type: GraphQLNonNull(UserType) },
 	}),
 });
 
@@ -54,6 +83,7 @@ const UserType = new GraphQLObjectType({
 		_id: { type: GraphQLNonNull(GraphQLID) },
 		email: { type: GraphQLNonNull(GraphQLString) },
 		password: { type: GraphQLString },
+		createdEvents: { type: GraphQLList(GraphQLNonNull(EventType)) },
 	}),
 });
 
@@ -96,7 +126,10 @@ const RootQueryType = new GraphQLObjectType({
 				return Event.find()
 					.then(events => {
 						return events.map(event => {
-							return { ...event._doc };
+							return {
+								...event._doc,
+								creator: user.bind(this, event._doc.creator),
+							};
 						});
 					})
 					.catch(err => {
@@ -124,11 +157,26 @@ const RootMutationType = new GraphQLObjectType({
 					description: args.eventInput.description,
 					price: +args.eventInput.price,
 					date: new Date(args.eventInput.date),
+					creator: "5f3846f73d6b5941b46190a8",
 				});
+				let createdEvent;
 				return event
 					.save()
 					.then(result => {
-						return { ...result._doc };
+						createdEvent = {
+							...result._doc,
+							creator: user.bind(this, result._doc.creator),
+						};
+						return User.findById("5f3846f73d6b5941b46190a8");
+					})
+					.then(user => {
+						if (!user) throw new Error("User not found.");
+
+						user.createdEvents.push(event);
+						user.save();
+					})
+					.then(result => {
+						return createdEvent;
 					})
 					.catch(err => {
 						console.log(err);
@@ -145,10 +193,9 @@ const RootMutationType = new GraphQLObjectType({
 			resolve: (parent, args) => {
 				return User.findOne({ email: args.userInput.email })
 					.then(user => {
-						if(user) 
-							throw new Error("Email already used.")
-					
-						return bcrypt.hash(args.userInput.password, 12)
+						if (user) throw new Error("Email already used.");
+
+						return bcrypt.hash(args.userInput.password, 12);
 					})
 					.then(hashedPass => {
 						const user = new User({
