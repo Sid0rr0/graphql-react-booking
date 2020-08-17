@@ -17,37 +17,38 @@ const {
 const path = require("path");
 require("dotenv").config({ path: __dirname + "/.env" });
 
-const Event = require("./models/event");
-const User = require("./models/user");
+const EventModel = require("./models/event");
+const UserModel = require("./models/user");
 
 const app = express();
 
-const events = eventIds => {
-	return Event.find({ _id: { $in: eventIds } })
-		.then(events => {
-			return events.map(event => {
-				return {
-					...event._doc,
-					creator: user.bind(this, event.creator),
-				};
-			});
-		})
-		.catch(err => {
-			throw err;
+const events = async eventIds => {
+	try {
+		const events = await EventModel.find({ _id: { $in: eventIds } });
+		return events.map(event => {
+			return {
+				...event._doc,
+				date: new Date(event._doc.date).toISOString(),
+				creator: user.bind(this, event.creator),
+			};
 		});
+	} catch (err) {
+		console.log(err);
+		throw err;
+	}
 };
 
-const user = userId => {
-	return User.findById(userId)
-		.then(user => {
-			return {
-				...user._doc,
-				createdEvents: events.bind(this, user._doc.createdEvents),
-			};
-		})
-		.catch(err => {
-			throw err;
-		});
+const user = async userId => {
+	try {
+		const oneUser = await UserModel.findById(userId);
+		return {
+			...oneUser._doc,
+			createdEvents: events.bind(this, oneUser._doc.createdEvents),
+		};
+	} catch (err) {
+		console.log(err);
+		throw err;
+	}
 };
 
 app.use(express.json());
@@ -122,20 +123,20 @@ const RootQueryType = new GraphQLObjectType({
 		events: {
 			type: GraphQLList(EventType),
 			description: "List of all events",
-			resolve: () => {
-				return Event.find()
-					.then(events => {
-						return events.map(event => {
-							return {
-								...event._doc,
-								creator: user.bind(this, event._doc.creator),
-							};
-						});
-					})
-					.catch(err => {
-						console.log(err);
-						throw err;
+			resolve: async () => {
+				try {
+					const events = await EventModel.find();
+					return events.map(event => {
+						return {
+							...event._doc,
+							date: new Date(event._doc.date).toISOString(),
+							creator: user.bind(this, event._doc.creator),
+						};
 					});
+				} catch (err) {
+					console.log(err);
+					throw err;
+				}
 			},
 		},
 	}),
@@ -151,37 +152,36 @@ const RootMutationType = new GraphQLObjectType({
 			args: {
 				eventInput: { type: EventInputType },
 			},
-			resolve: (parent, args) => {
-				const event = new Event({
-					title: args.eventInput.title,
-					description: args.eventInput.description,
-					price: +args.eventInput.price,
-					date: new Date(args.eventInput.date),
-					creator: "5f3846f73d6b5941b46190a8",
-				});
-				let createdEvent;
-				return event
-					.save()
-					.then(result => {
-						createdEvent = {
-							...result._doc,
-							creator: user.bind(this, result._doc.creator),
-						};
-						return User.findById("5f3846f73d6b5941b46190a8");
-					})
-					.then(user => {
-						if (!user) throw new Error("User not found.");
-
-						user.createdEvents.push(event);
-						user.save();
-					})
-					.then(result => {
-						return createdEvent;
-					})
-					.catch(err => {
-						console.log(err);
-						throw err;
+			resolve: async (parent, args) => {
+				try {
+					const newEvent = new EventModel({
+						title: args.eventInput.title,
+						description: args.eventInput.description,
+						price: +args.eventInput.price,
+						date: new Date(args.eventInput.date),
+						creator: "5f3a94a20168e645242fc345",
 					});
+
+					const creator = await UserModel.findById(
+						"5f3a94a20168e645242fc345"
+					);
+					if (!creator) throw new Error("User not found.");
+
+					const result = await newEvent.save();
+					creator.createdEvents.push(newEvent);
+					await creator.save();
+
+					const savedEvent = {
+						...result._doc,
+						date: new Date(result._doc.date).toISOString(),
+						creator: user.bind(this, result._doc.creator),
+					};
+
+					return savedEvent;
+				} catch (err) {
+					console.log(err);
+					throw err;
+				}
 			},
 		},
 		createUser: {
@@ -190,33 +190,29 @@ const RootMutationType = new GraphQLObjectType({
 			args: {
 				userInput: { type: UserInputType },
 			},
-			resolve: (parent, args) => {
-				return User.findOne({ email: args.userInput.email })
-					.then(user => {
-						if (user) throw new Error("Email already used.");
-
-						return bcrypt.hash(args.userInput.password, 12);
-					})
-					.then(hashedPass => {
-						const user = new User({
-							email: args.userInput.email,
-							password: hashedPass,
-						});
-
-						return user
-							.save()
-							.then(result => {
-								return { ...result._doc, password: null };
-							})
-							.catch(err => {
-								console.log(err);
-								throw err;
-							});
-					})
-					.catch(err => {
-						console.log(err);
-						throw err;
+			resolve: async (parent, args) => {
+				try {
+					const existingUser = await UserModel.findOne({
+						email: args.userInput.email,
 					});
+					if (existingUser) throw new Error("Email already used.");
+
+					const hashedPass = await bcrypt.hash(
+						args.userInput.password,
+						12
+					);
+
+					const newUser = new UserModel({
+						email: args.userInput.email,
+						password: hashedPass,
+					});
+
+					const result = await newUser.save();
+					return { ...result._doc, password: null };
+				} catch (err) {
+					console.log(err);
+					throw err;
+				}
 			},
 		},
 	}),
