@@ -17,9 +17,23 @@ const path = require("path");
 require("dotenv").config({ path: __dirname + "/.env" });
 
 const EventModel = require("./models/event");
-const UserModel = require("./models/user");
+Aconst UserModel = require("./models/user");
+const BookingModel = require("./models/Booking");
 
 const app = express();
+
+const getEvent = async eventId => {
+	try {
+		const fetchedEvent = await EventModel.findById(eventId);
+		return {
+			...fetchedEvent._doc,
+			creator: getUser.bind(this, fetchedEvent.creator),
+		};
+	} catch (err) {
+		console.log(err);
+		throw err;
+	}
+};
 
 const getEvents = async eventIds => {
 	try {
@@ -96,6 +110,18 @@ const UserInputType = new GraphQLInputObjectType({
 	}),
 });
 
+const BookingType = new GraphQLObjectType({
+	name: "Booking",
+	description: "This represents booking",
+	fields: () => ({
+		_id: { type: GraphQLNonNull(GraphQLID) },
+		event: { type: GraphQLNonNull(EventType) },
+		user: { type: GraphQLNonNull(UserType) },
+		createdAt: { type: GraphQLNonNull(GraphQLString) },
+		updatedAt: { type: GraphQLNonNull(GraphQLString) },
+	}),
+});
+
 const RootQueryType = new GraphQLObjectType({
 	name: "Query",
 	description: "Root query",
@@ -130,6 +156,31 @@ const RootQueryType = new GraphQLObjectType({
 							...event._doc,
 							date: new Date(event._doc.date).toISOString(),
 							creator: getUser.bind(this, event._doc.creator),
+						};
+					});
+				} catch (err) {
+					console.log(err);
+					throw err;
+				}
+			},
+		},
+		bookings: {
+			type: GraphQLList(BookingType),
+			description: "List of all bookings",
+			resolve: async () => {
+				try {
+					const fetchedBookings = await BookingModel.find();
+					return fetchedBookings.map(booking => {
+						return {
+							...booking._doc,
+							createdAt: new Date(
+								booking._doc.createdAt
+							).toISOString(),
+							updatedAt: new Date(
+								booking._doc.updatedAt
+							).toISOString(),
+							user: getUser.bind(this, booking._doc.user),
+							event: getEvent.bind(this, booking._doc.event),
 						};
 					});
 				} catch (err) {
@@ -191,10 +242,10 @@ const RootMutationType = new GraphQLObjectType({
 			},
 			resolve: async (parent, args) => {
 				try {
-					const existingUser = await UserModel.findOne({
+					const fetchedUser = await UserModel.findOne({
 						email: args.userInput.email,
 					});
-					if (existingUser) throw new Error("Email already used.");
+					if (fetchedUser) throw new Error("Email already used.");
 
 					const hashedPass = await bcrypt.hash(
 						args.userInput.password,
@@ -208,6 +259,66 @@ const RootMutationType = new GraphQLObjectType({
 
 					const result = await newUser.save();
 					return { ...result._doc, password: null };
+				} catch (err) {
+					console.log(err);
+					throw err;
+				}
+			},
+		},
+		bookEvent: {
+			type: BookingType,
+			description: "Create a booking",
+			args: {
+				eventId: { type: GraphQLID },
+			},
+			resolve: async (parent, args) => {
+				try {
+					const fetchedEvent = await EventModel.findOne({
+						_id: args.eventId,
+					});
+					const newBooking = new BookingModel({
+						user: "5f3a94a20168e645242fc345",
+						event: fetchedEvent,
+					});
+					const result = await newBooking.save();
+					return {
+						...result._doc,
+						createdAt: new Date(
+							result._doc.createdAt
+						).toISOString(),
+						updatedAt: new Date(
+							result._doc.updatedAt
+						).toISOString(),
+						user: getUser.bind(this, result._doc.user),
+						event: getEvent.bind(this, result._doc.event),
+					};
+				} catch (err) {
+					console.log(err);
+					throw err;
+				}
+			},
+		},
+		cancelBooking: {
+			type: EventType,
+			description: "Cancels a booking",
+			args: {
+				bookingId: { type: GraphQLID },
+			},
+			resolve: async (parent, args) => {
+				try {
+					const fetchedBooking = await BookingModel.findById(
+						args.bookingId
+					).populate("event");
+					if (!fetchedBooking) throw new Error("Booking not found.");
+					const fetchedEvent = {
+						...fetchedBooking.event._doc,
+						creator: getUser.bind(
+							this,
+							fetchedBooking.event._doc.creator
+						),
+					};
+					await BookingModel.deleteOne({ _id: args.bookingId });
+					return fetchedEvent;
 				} catch (err) {
 					console.log(err);
 					throw err;
