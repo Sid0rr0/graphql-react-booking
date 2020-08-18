@@ -7,7 +7,6 @@ const {
 	GraphQLObjectType,
 	GraphQLNonNull,
 	GraphQLList,
-	GraphQLInt,
 	GraphQLFloat,
 	GraphQLString,
 	GraphQLID,
@@ -22,14 +21,14 @@ const UserModel = require("./models/user");
 
 const app = express();
 
-const events = async eventIds => {
+const getEvents = async eventIds => {
 	try {
 		const events = await EventModel.find({ _id: { $in: eventIds } });
 		return events.map(event => {
 			return {
 				...event._doc,
 				date: new Date(event._doc.date).toISOString(),
-				creator: user.bind(this, event.creator),
+				creator: getUser.bind(this, event.creator),
 			};
 		});
 	} catch (err) {
@@ -38,12 +37,12 @@ const events = async eventIds => {
 	}
 };
 
-const user = async userId => {
+const getUser = async userId => {
 	try {
 		const oneUser = await UserModel.findById(userId);
 		return {
 			...oneUser._doc,
-			createdEvents: events.bind(this, oneUser._doc.createdEvents),
+			createdEvents: getEvents.bind(this, oneUser._doc.createdEvents),
 		};
 	} catch (err) {
 		console.log(err);
@@ -130,7 +129,7 @@ const RootQueryType = new GraphQLObjectType({
 						return {
 							...event._doc,
 							date: new Date(event._doc.date).toISOString(),
-							creator: user.bind(this, event._doc.creator),
+							creator: getUser.bind(this, event._doc.creator),
 						};
 					});
 				} catch (err) {
@@ -174,7 +173,7 @@ const RootMutationType = new GraphQLObjectType({
 					const savedEvent = {
 						...result._doc,
 						date: new Date(result._doc.date).toISOString(),
-						creator: user.bind(this, result._doc.creator),
+						creator: getUser.bind(this, result._doc.creator),
 					};
 
 					return savedEvent;
