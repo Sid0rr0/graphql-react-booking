@@ -11,6 +11,7 @@ const {
 	bookEvent,
 	cancelBooking,
 } = require("./graphql/resolvers/booking");
+const isAuth = require("./middleware/is-auth");
 
 const app = express();
 app.use(express.json());
@@ -40,6 +41,8 @@ const schema = new GraphQLSchema({
 	query: RootQueryType,
 	mutation: RootMutationType,
 });
+
+app.use(isAuth);
 
 app.use(
 	"/graphql",

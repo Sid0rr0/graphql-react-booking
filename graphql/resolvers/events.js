@@ -4,7 +4,6 @@ const EventModel = require("../../models/event");
 const UserModel = require("../../models/user");
 const { transformEvent } = require("./merge");
 
-
 module.exports = {
 	events: {
 		type: GraphQLList(EventType),
@@ -27,18 +26,21 @@ module.exports = {
 		args: {
 			eventInput: { type: EventInputType },
 		},
-		resolve: async (parent, args) => {
+		resolve: async (parent, args, req) => {
+			if (!req.isAuth) {
+				throw new Error("Unauthenticated!");
+			}
 			try {
 				const newEvent = new EventModel({
 					title: args.eventInput.title,
 					description: args.eventInput.description,
 					price: +args.eventInput.price,
 					date: new Date(args.eventInput.date),
-					creator: "5f3a94a20168e645242fc345",
+					creator: req.userId,
 				});
 
 				const creator = await UserModel.findById(
-					"5f3a94a20168e645242fc345"
+					req.userId
 				);
 				if (!creator) throw new Error("User not found.");
 

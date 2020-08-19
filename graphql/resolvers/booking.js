@@ -4,12 +4,14 @@ const { transformEvent, transformBooking } = require("./merge");
 const EventModel = require("../../models/event");
 const BookingModel = require("../../models/booking");
 
-
 module.exports = {
 	bookings: {
 		type: GraphQLList(BookingType),
 		description: "List of all bookings",
-		resolve: async () => {
+		resolve: async (parent, args, req) => {
+			if (!req.isAuth) {
+				throw new Error("Unauthenticated!");
+			}
 			try {
 				const fetchedBookings = await BookingModel.find();
 				return fetchedBookings.map(booking => {
@@ -27,13 +29,16 @@ module.exports = {
 		args: {
 			eventId: { type: GraphQLID },
 		},
-		resolve: async (parent, args) => {
+		resolve: async (parent, args, req) => {
+			if (!req.isAuth) {
+				throw new Error("Unauthenticated!");
+			}
 			try {
 				const fetchedEvent = await EventModel.findOne({
 					_id: args.eventId,
 				});
 				const newBooking = new BookingModel({
-					user: "5f3a94a20168e645242fc345",
+					user: req.userId,
 					event: fetchedEvent,
 				});
 				const result = await newBooking.save();
@@ -50,7 +55,10 @@ module.exports = {
 		args: {
 			bookingId: { type: GraphQLID },
 		},
-		resolve: async (parent, args) => {
+		resolve: async (parent, args, req) => {
+			if (!req.isAuth) {
+				throw new Error("Unauthenticated!");
+			}
 			try {
 				const fetchedBooking = await BookingModel.findById(
 					args.bookingId
