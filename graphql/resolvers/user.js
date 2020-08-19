@@ -1,7 +1,8 @@
-const { UserType, UserInputType } = require("../types/types");
+const { UserType, UserInputType, AuthType } = require("../types/types");
+const { GraphQLString } = require("graphql");
 const UserModel = require("../../models/user");
 const bcrypt = require("bcryptjs");
-
+const jwt = require("jsonwebtoken");
 
 module.exports = {
 	createUser: {
@@ -29,6 +30,46 @@ module.exports = {
 
 				const result = await newUser.save();
 				return { ...result._doc, password: null };
+			} catch (err) {
+				console.log(err);
+				throw err;
+			}
+		},
+	},
+	login: {
+		type: AuthType,
+		description: "Login user",
+		args: {
+			email: { type: GraphQLString },
+			password: { type: GraphQLString },
+		},
+		resolve: async (parent, args) => {
+			try {
+				const fetchedUser = await UserModel.findOne({
+					email: args.email,
+				});
+				if (!fetchedUser) throw new Error("User does not exist");
+
+				const passwordMatch = await bcrypt.compare(
+					args.password,
+					fetchedUser.password
+				);
+				if (!passwordMatch) throw new Error("Password does not match");
+
+				const token = jwt.sign(
+					{
+						userId: fetchedUser.id,
+						email: fetchedUser.email,
+					},
+					"somebodyoncetoldme",
+					{ expiresIn: "1h" }
+				);
+
+				return {
+					userId: fetchedUser.id,
+					token: token,
+					tokenExpiration: 1,
+				};
 			} catch (err) {
 				console.log(err);
 				throw err;

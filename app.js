@@ -4,14 +4,13 @@ const { graphqlHTTP } = require("express-graphql");
 const { GraphQLSchema, GraphQLObjectType } = require("graphql");
 const path = require("path");
 require("dotenv").config({ path: __dirname + "/.env" });
-const { createUser } = require("./graphql/resolvers/user");
+const { createUser, login } = require("./graphql/resolvers/user");
 const { events, createEvent } = require("./graphql/resolvers/events");
 const {
 	bookings,
 	bookEvent,
 	cancelBooking,
 } = require("./graphql/resolvers/booking");
-
 
 const app = express();
 app.use(express.json());
@@ -22,6 +21,7 @@ const RootQueryType = new GraphQLObjectType({
 	fields: () => ({
 		events: { ...events },
 		bookings: { ...bookings },
+		login: { ...login },
 	}),
 });
 
