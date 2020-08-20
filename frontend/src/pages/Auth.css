@@ -9,8 +9,8 @@
 	margin: 5rem auto;
 }
 
-.form-control label,
-.form-control input {
+.auth-form .form-control label,
+.auth-form .form-control input {
 	width: 80%;
 	display: block;
 }

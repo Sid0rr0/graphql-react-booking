@@ -39,9 +39,7 @@ module.exports = {
 					creator: req.userId,
 				});
 
-				const creator = await UserModel.findById(
-					req.userId
-				);
+				const creator = await UserModel.findById(req.userId);
 				if (!creator) throw new Error("User not found.");
 
 				const result = await newEvent.save();
