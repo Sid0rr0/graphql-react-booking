@@ -22,9 +22,14 @@ export default function Navbar(props) {
 						<NavLink to="/events">Events</NavLink>
 					</li>
 					{authContext.token && (
-						<li>
-							<NavLink to="/bookings">Bookins</NavLink>
-						</li>
+						<>
+							<li>
+								<NavLink to="/bookings">Bookins</NavLink>
+							</li>
+							<li>
+								<button onClick={authContext.logout}>Lougout</button>
+							</li>
+						</>
 					)}
 				</ul>
 			</nav>
