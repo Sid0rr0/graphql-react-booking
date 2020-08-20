@@ -1,10 +1,13 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useContext } from "react";
 import "./Auth.css";
+import AuthContext from "../context/auth-context";
 
 export default function Auth() {
 	const emailRef = useRef("");
 	const passwordRef = useRef("");
-	const [isLogin, setisLogin] = useState(true);
+	const [isLogin, setIsLogin] = useState(true);
+
+	const authContext = useContext(AuthContext);
 
 	function submitHandler(e) {
 		e.preventDefault();
@@ -22,10 +25,10 @@ export default function Auth() {
 						tokenExpiration
 					}
 				}
-			`
-		}
+			`,
+		};
 
-		if(!isLogin) {
+		if (!isLogin) {
 			requestBody = {
 				query: `
 				mutation {
@@ -52,6 +55,13 @@ export default function Auth() {
 			})
 			.then(resData => {
 				console.log(resData);
+				if (resData.data.login.token) {
+					authContext.login(
+						resData.data.login.token,
+						resData.data.login.userId,
+						resData.data.login.tokenExpiration
+					);
+				}
 			})
 			.catch(err => {
 				console.log(err);
@@ -74,7 +84,7 @@ export default function Auth() {
 					<button type="submit">Submit</button>
 					<button
 						type="button"
-						onClick={() => setisLogin(prevState => !prevState)}
+						onClick={() => setIsLogin(prevState => !prevState)}
 					>
 						{isLogin ? "Signup" : "Login"}
 					</button>
