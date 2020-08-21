@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext } from "react";
+import React, { useState, useRef, useContext, useEffect } from "react";
 import "./Events.css";
 import Modal from "../components/modal/Modal.js";
 import Backdrop from "../components/backdrop/Backdrop.js";
@@ -6,11 +6,55 @@ import AuthContext from "../context/auth-context";
 
 export default function Events() {
 	const [creating, setCreating] = useState(false);
+	const [events, setEvents] = useState([]);
 	const titleRef = useRef();
 	const priceRef = useRef();
 	const dateRef = useRef();
 	const descriptionRef = useRef();
 	const authContext = useContext(AuthContext);
+
+	function fetchEvents() {
+		const requestBody = {
+			query: `
+				query {
+					events {
+						_id
+						title
+						date
+						price
+						description
+						creator {
+							_id
+							email
+						}
+					}
+				}
+			`,
+		};
+
+		fetch("http://localhost:8000/graphql", {
+			method: "POST",
+			body: JSON.stringify(requestBody),
+			headers: {
+				"Content-Type": "application/json",
+			},
+		})
+			.then(res => {
+				if (res.status !== 200 && res.status !== 201)
+					throw new Error("Failed");
+				return res.json();
+			})
+			.then(resData => {
+				setEvents(resData.data.events);
+			})
+			.catch(err => {
+				console.log(err);
+			});
+	}
+
+	useEffect(() => {
+		fetchEvents();
+	}, []);
 
 	function modalCancelHandler() {
 		setCreating(false);
@@ -31,8 +75,7 @@ export default function Events() {
 		)
 			return;
 
-		const event = { title, price, date, description };
-		console.log(event);
+		//const event = { title, price, date, description };
 
 		const requestBody = {
 			query: `
@@ -66,19 +109,21 @@ export default function Events() {
 				return res.json();
 			})
 			.then(resData => {
-				console.log(resData);
-				/*if (resData.data.login.token) {
-					authContext.login(
-						resData.data.login.token,
-						resData.data.login.userId,
-						resData.data.login.tokenExpiration
-					);
-				}*/
+				const newEvent = resData.data.createEvent;
+				setEvents(prevState => [...prevState, newEvent]);
 			})
 			.catch(err => {
 				console.log(err);
 			});
 	}
+
+	const eventList = events.map(event => {
+		return (
+			<li key={event._id} className="events__list-item">
+				{event.title}
+			</li>
+		);
+	});
 
 	return (
 		<>
@@ -127,6 +172,7 @@ export default function Events() {
 					</button>
 				</div>
 			)}
+			<ul className="events__list">{eventList}</ul>
 		</>
 	);
 }
