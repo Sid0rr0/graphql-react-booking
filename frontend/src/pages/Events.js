@@ -4,9 +4,12 @@ import Modal from "../components/modal/Modal.js";
 import Backdrop from "../components/backdrop/Backdrop.js";
 import AuthContext from "../context/auth-context";
 import EventList from "../components/events/EventList";
+import Spinner from "../components/spinner/Spinner";
 
 export default function Events() {
 	const [creating, setCreating] = useState(false);
+	const [isLodading, setIsLodading] = useState(false);
+	const [selectedEvent, setSelectedEvent] = useState();
 	const [events, setEvents] = useState([]);
 	const titleRef = useRef();
 	const priceRef = useRef();
@@ -15,6 +18,7 @@ export default function Events() {
 	const authContext = useContext(AuthContext);
 
 	function fetchEvents() {
+		setIsLodading(true);
 		const requestBody = {
 			query: `
 				query {
@@ -47,19 +51,17 @@ export default function Events() {
 			})
 			.then(resData => {
 				setEvents(resData.data.events);
+				setIsLodading(false);
 			})
 			.catch(err => {
 				console.log(err);
+				setIsLodading(false);
 			});
 	}
 
 	useEffect(() => {
 		fetchEvents();
 	}, []);
-
-	function modalCancelHandler() {
-		setCreating(false);
-	}
 
 	function modalConfirmHandler() {
 		setCreating(false);
@@ -75,8 +77,6 @@ export default function Events() {
 			description.trim().length === 0
 		)
 			return;
-
-		//const event = { title, price, date, description };
 
 		const requestBody = {
 			query: `
@@ -118,16 +118,25 @@ export default function Events() {
 			});
 	}
 
+	function showDetailHandler(eventId) {
+		setSelectedEvent(events.find(e => e._id === eventId));
+	}
+
+	function bookEventHandler() {
+		return;
+	}
+
 	return (
 		<>
-			{creating && <Backdrop />}
+			{(creating || selectedEvent) && <Backdrop />}
 			{creating && (
 				<Modal
 					title="Add Event"
 					canCancel
 					canConfirm
-					onCancel={modalCancelHandler}
+					onCancel={() => setCreating(false)}
 					onConfirm={modalConfirmHandler}
+					confirmText="Confirm"
 				>
 					<form>
 						<div className="form-control">
@@ -157,6 +166,23 @@ export default function Events() {
 					</form>
 				</Modal>
 			)}
+			{selectedEvent && (
+				<Modal
+					title={selectedEvent.title}
+					canCancel
+					canConfirm
+					onCancel={() => setSelectedEvent(null)}
+					onConfirm={bookEventHandler}
+					confirmText="Book"
+				>
+					<h1>{selectedEvent.title}</h1>
+					<h2>
+						Price: {selectedEvent.price} Diamonds |{" "}
+						{new Date(selectedEvent.date).toLocaleDateString()}
+					</h2>
+					<p>{selectedEvent.description}</p>
+				</Modal>
+			)}
 			{authContext.token && (
 				<div className="events-control">
 					<p>Share your own Events!</p>
@@ -165,7 +191,15 @@ export default function Events() {
 					</button>
 				</div>
 			)}
-			<EventList events={events} authUserId={authContext.userId} />
+			{isLodading ? (
+				<Spinner />
+			) : (
+				<EventList
+					events={events}
+					authUserId={authContext.userId}
+					onViewDetail={showDetailHandler}
+				/>
+			)}
 		</>
 	);
 }
