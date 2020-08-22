@@ -3,6 +3,7 @@ import "./Events.css";
 import Modal from "../components/modal/Modal.js";
 import Backdrop from "../components/backdrop/Backdrop.js";
 import AuthContext from "../context/auth-context";
+import EventList from "../components/events/EventList";
 
 export default function Events() {
 	const [creating, setCreating] = useState(false);
@@ -117,14 +118,6 @@ export default function Events() {
 			});
 	}
 
-	const eventList = events.map(event => {
-		return (
-			<li key={event._id} className="events__list-item">
-				{event.title}
-			</li>
-		);
-	});
-
 	return (
 		<>
 			{creating && <Backdrop />}
@@ -172,7 +165,7 @@ export default function Events() {
 					</button>
 				</div>
 			)}
-			<ul className="events__list">{eventList}</ul>
+			<EventList events={events} authUserId={authContext.userId} />
 		</>
 	);
 }
