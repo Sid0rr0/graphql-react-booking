@@ -24,10 +24,12 @@ export default function Navbar(props) {
 					{authContext.token && (
 						<>
 							<li>
-								<NavLink to="/bookings">Bookins</NavLink>
+								<NavLink to="/bookings">Bookings</NavLink>
 							</li>
 							<li>
-								<button onClick={authContext.logout}>Lougout</button>
+								<button onClick={authContext.logout}>
+									Lougout
+								</button>
 							</li>
 						</>
 					)}

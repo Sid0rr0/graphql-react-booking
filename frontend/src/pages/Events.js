@@ -8,7 +8,7 @@ import Spinner from "../components/spinner/Spinner";
 
 export default function Events() {
 	const [creating, setCreating] = useState(false);
-	const [isLodading, setIsLodading] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
 	const [selectedEvent, setSelectedEvent] = useState();
 	const [events, setEvents] = useState([]);
 	const titleRef = useRef();
@@ -17,8 +17,8 @@ export default function Events() {
 	const descriptionRef = useRef();
 	const authContext = useContext(AuthContext);
 
-	function fetchEvents() {
-		setIsLodading(true);
+	/*function fetchEvents() {
+		setIsLoading(true);
 		const requestBody = {
 			query: `
 				query {
@@ -51,16 +51,55 @@ export default function Events() {
 			})
 			.then(resData => {
 				setEvents(resData.data.events);
-				setIsLodading(false);
+				setIsLoading(false);
 			})
 			.catch(err => {
 				console.log(err);
-				setIsLodading(false);
+				setIsLoading(false);
 			});
-	}
+	}*/
 
 	useEffect(() => {
-		fetchEvents();
+		//fetchEvents();
+		setIsLoading(true);
+		const requestBody = {
+			query: `
+				query {
+					events {
+						_id
+						title
+						date
+						price
+						description
+						creator {
+							_id
+							email
+						}
+					}
+				}
+			`,
+		};
+
+		fetch("http://localhost:8000/graphql", {
+			method: "POST",
+			body: JSON.stringify(requestBody),
+			headers: {
+				"Content-Type": "application/json",
+			},
+		})
+			.then(res => {
+				if (res.status !== 200 && res.status !== 201)
+					throw new Error("Failed");
+				return res.json();
+			})
+			.then(resData => {
+				setEvents(resData.data.events);
+				setIsLoading(false);
+			})
+			.catch(err => {
+				console.log(err);
+				setIsLoading(false);
+			});
 	}, []);
 
 	function modalConfirmHandler() {
@@ -123,7 +162,42 @@ export default function Events() {
 	}
 
 	function bookEventHandler() {
-		return;
+		if (!authContext.token) {
+			setSelectedEvent(null);
+			return;
+		}
+		const requestBody = {
+			query: `
+				mutation {
+					bookEvent(eventId: "${selectedEvent._id}") {
+						_id
+						createdAt
+						updatedAt
+					}
+				}
+			`,
+		};
+
+		fetch("http://localhost:8000/graphql", {
+			method: "POST",
+			body: JSON.stringify(requestBody),
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${authContext.token}`,
+			},
+		})
+			.then(res => {
+				if (res.status !== 200 && res.status !== 201)
+					throw new Error("Failed");
+				return res.json();
+			})
+			.then(resData => {
+				console.log(resData);
+				setSelectedEvent(null);
+			})
+			.catch(err => {
+				console.log(err);
+			});
 	}
 
 	return (
@@ -173,7 +247,7 @@ export default function Events() {
 					canConfirm
 					onCancel={() => setSelectedEvent(null)}
 					onConfirm={bookEventHandler}
-					confirmText="Book"
+					confirmText={authContext.token ? "Book" : "Confirm"}
 				>
 					<h1>{selectedEvent.title}</h1>
 					<h2>
@@ -191,7 +265,7 @@ export default function Events() {
 					</button>
 				</div>
 			)}
-			{isLodading ? (
+			{isLoading ? (
 				<Spinner />
 			) : (
 				<EventList
