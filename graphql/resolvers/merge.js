@@ -1,15 +1,12 @@
 const { dateToString } = require("../../helpers/date");
 const UserModel = require("../../models/user");
 const EventModel = require("../../models/event");
-
+const DataLoader = require("dataloader");
 
 const getEvent = async eventId => {
 	try {
-		const fetchedEvent = await EventModel.findById(eventId);
-		return {
-			...fetchedEvent._doc,
-			creator: getUser.bind(this, fetchedEvent.creator),
-		};
+		const fetchedEvent = await eventLoader.load(eventId.toString());
+		return fetchedEvent;
 	} catch (err) {
 		console.log(err);
 		throw err;
@@ -18,13 +15,9 @@ const getEvent = async eventId => {
 
 const getEvents = async eventIds => {
 	try {
-		const events = await EventModel.find({ _id: { $in: eventIds } });
-		return events.map(event => {
-			return {
-				...event._doc,
-				date: new Date(event._doc.date).toISOString(),
-				creator: getUser.bind(this, event.creator),
-			};
+		const fetchedEvents = await EventModel.find({ _id: { $in: eventIds } });
+		return fetchedEvents.map(event => {
+			return transformEvent(event);
 		});
 	} catch (err) {
 		console.log(err);
@@ -34,10 +27,13 @@ const getEvents = async eventIds => {
 
 const getUser = async userId => {
 	try {
-		const oneUser = await UserModel.findById(userId);
+		const fetchedUser = await userLoader.load(userId.toString());
 		return {
-			...oneUser._doc,
-			createdEvents: getEvents.bind(this, oneUser._doc.createdEvents),
+			...fetchedUser._doc,
+			createdEvents: eventLoader.load.bind(
+				this,
+				fetchedUser._doc.createdEvents
+			),
 		};
 	} catch (err) {
 		console.log(err);
@@ -62,6 +58,14 @@ const transformBooking = booking => {
 		event: getEvent.bind(this, booking._doc.event),
 	};
 };
+
+const eventLoader = new DataLoader(eventIds => {
+	return getEvents(eventIds);
+});
+
+const userLoader = new DataLoader(userIds => {
+	return UserModel.find({ _id: { $in: userIds } });
+});
 
 module.exports = {
 	getEvent,

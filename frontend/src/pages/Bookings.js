@@ -116,7 +116,7 @@ export default function Bookings() {
 					throw new Error("Failed");
 				return res.json();
 			})
-			.then(resData => {
+			.then(() => {
 				setBookings(prevState => {
 					return prevState.filter(
 						booking => booking._id !== bookingId
