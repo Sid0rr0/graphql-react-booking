@@ -30,10 +30,8 @@ const getUser = async userId => {
 		const fetchedUser = await userLoader.load(userId.toString());
 		return {
 			...fetchedUser._doc,
-			createdEvents: eventLoader.load.bind(
-				this,
-				fetchedUser._doc.createdEvents
-			),
+			createdEvents: () =>
+				eventLoader.loadMany(fetchedUser._doc.createdEvents),
 		};
 	} catch (err) {
 		console.log(err);
