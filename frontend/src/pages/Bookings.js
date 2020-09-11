@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useContext } from "react";
 import AuthContext from "../context/auth-context";
 import Spinner from "../components/spinner/Spinner";
-import BookingList from "../components/bookings/BookingList";
+import BookingList from "../components/bookings/bookinsList/BookingList";
+import BookingsChart from "../components/bookings/bookinsChart/BookingsChart";
+import BookingsControls from "../components/bookings/bookingsControls/BookingsControls";
 
 export default function Bookings() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [bookings, setBookings] = useState([]);
+	const [outputType, setOutputType] = useState("list");
 	const authContext = useContext(AuthContext);
 
 	/*function fetchBookings() {
@@ -131,13 +134,33 @@ export default function Bookings() {
 			});
 	}
 
-	return (
-		<div>
-			{isLoading ? (
-				<Spinner />
-			) : (
-				<BookingList bookings={bookings} onDelete={onDelete} />
-			)}
-		</div>
-	);
+	function changeContentHandler(outType) {
+		if (outType === "list") {
+			setOutputType("list");
+		} else {
+			setOutputType("chart");
+		}
+	}
+
+	let content = <Spinner />;
+
+	if (!isLoading) {
+		content = (
+			<>
+				<BookingsControls
+					activeOutputType={outputType}
+					onChange={changeContentHandler}
+				/>
+				<div>
+					{outputType === "list" ? (
+						<BookingList bookings={bookings} onDelete={onDelete} />
+					) : (
+						<BookingsChart bookings={bookings} />
+					)}
+				</div>
+			</>
+		);
+	}
+
+	return <div>{content}</div>;
 }
