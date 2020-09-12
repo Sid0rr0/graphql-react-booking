@@ -65,6 +65,7 @@ export default function Bookings() {
 							_id
 							title
 							date
+							price
 						}
 					}
 				}
