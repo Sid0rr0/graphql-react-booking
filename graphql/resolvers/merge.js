@@ -16,6 +16,12 @@ const getEvent = async eventId => {
 const getEvents = async eventIds => {
 	try {
 		const fetchedEvents = await EventModel.find({ _id: { $in: eventIds } });
+		fetchedEvents.sort((a, b) => {
+			return (
+				eventIds.indexOf(a._id.toString()) -
+				eventIds.indexOf(b._id.toString())
+			);
+		});
 		return fetchedEvents.map(event => {
 			return transformEvent(event);
 		});
